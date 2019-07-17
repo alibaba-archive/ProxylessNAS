@@ -150,8 +150,6 @@ def train_architecture_parameters(architecture_parameters, index_candidate_block
 
                     grad += 1/M * acc_results[m] * (1 - math.exp(architecture_parameters[layer][op])/sum_layer)
                 else:
-                    print(11111111111111111)
-                    print(math.exp(architecture_parameters[layer][op]))
                     grad += 1/M * acc_results[m] * (-1 * math.exp(architecture_parameters[layer][op])/sum_layer)
             architecture_parameters[layer][op] -= grad
 
