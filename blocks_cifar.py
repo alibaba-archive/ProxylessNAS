@@ -38,7 +38,7 @@ class Identity(nn.Module):
 class ProxylessNASBlock(nn.Module):
     def __init__(self, C_in, C_out, kernel_size, stride,
                  expansion, group, bn=False):
-        super(ProxylessNASBlock, self).__init__()
+        super(FBNetBlock, self).__init__()
         assert not bn, "not support bn for now"
         bias_flag = not bn
         if kernel_size == 1:
@@ -102,35 +102,63 @@ class ProxylessNASBlock(nn.Module):
 
 def get_blocks(cifar10=False, face=False):
     BLOCKS = []
-    _f = [16, 24, 32, 64, 96, 160, 320]
-    _n = [1, 2, 3, 4, 3, 3, 1]
-    _s = [1, 2, 2, 2, 1, 2, 1]
-    _kernel_and_e = [[3,3],[5,3],[7,3],[3,6],[5,6],[7,6]]
-    BLOCKS.append(nn.Conv2d(3, 32, 3, 2, padding=1))
-    BLOCKS.append(nn.BatchNorm2d(32))
-    BLOCKS.append(nn.ReLU6(inplace=False))
-    c_in = 32
-    for n_idx in range(len(_n)):
+    _f = [16, 16, 24, 32,
+          64, 112, 184, 352,
+          1984]
+    _n = [1, 1, 4, 4,
+          4, 4, 4, 1,
+          1]
+    if cifar10:
+        assert not face
+        _s = [1, 1, 2, 2,
+              1, 1, 1, 1,
+              1]
+    elif face:
+        assert not cifar10
+        _s = [1, 1, 2, 2,
+              2, 1, 2, 1,
+              1]
+    else:
+        _s = [2, 1, 2, 2,
+              2, 1, 2, 1,
+              1]
+    _e = [1, 1, 3, 6,
+          1, 1, 3, 6]
+    _kernel = [3, 3, 3, 3,
+               5, 5, 5, 5]
+    _group = [1, 2, 1, 1,
+              1, 2, 1, 1]
+    tbs_range = slice(1, 8)  # [1, 7]
+
+    BLOCKS.append(nn.Conv2d(3, 16, 3, 2, padding=1))
+    BLOCKS.append(nn.BatchNorm2d(16))
+    BLOCKS.append(nn.ReLU(inplace=False))
+    c_in = 16
+    for n_idx in range(len(_n))[tbs_range]:
         c_out = _f[n_idx]
         stride = _s[n_idx]
+
         for inner_idx in range(_n[n_idx]):
             # c_out = _f[n_idx]
-            # for each layer
             tmp_block = []
-            for b_idx in range(len(_kernel_and_e)):
-                expansion = _kernel_and_e[b_idx][1]
-                kernel = _kernel_and_e[b_idx][0]
-                # group = _group[b_idx]
+
+            for b_idx in range(len(_e)):
+                expansion = _e[b_idx]
+                kernel = _kernel[b_idx]
+                group = _group[b_idx]
+
                 tmp_block.append(ProxylessNASBlock(c_in, c_out,
-                                            kernel, stride, expansion, group = 1))
+                                            kernel, stride, expansion, group))
+
             # skip is not available everywhere
             if inner_idx > 0 and ((c_in == c_out) and (stride == 1)):
                 tmp_block.append(Identity())
+
             BLOCKS.append(tmp_block)
             stride = 1
             c_in = c_out
-    BLOCKS.append(nn.Conv2d(c_out, 1280, 1, padding=0))
-    BLOCKS.append(nn.BatchNorm2d(1280))
+    BLOCKS.append(nn.Conv2d(c_out, 1984, 1, padding=0))
+    BLOCKS.append(nn.BatchNorm2d(1984))
     BLOCKS.append(nn.ReLU(inplace=False))
     #assert len(BLOCKS) == 24
     return BLOCKS
