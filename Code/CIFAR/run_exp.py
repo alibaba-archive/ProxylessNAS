@@ -13,5 +13,5 @@ if __name__ == '__main__':
 
     path = './Proxyless-NAS/Nets/cifar'
     expdir_monitor = ExpdirMonitor(path)
-    expdir_monitor.train_samplent()
+    expdir_monitor.train_samplenet()
     # expdir_monitor.train_supernet()
