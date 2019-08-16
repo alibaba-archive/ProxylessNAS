@@ -22,6 +22,7 @@ from data_providers import get_data_provider_by_name
 from models.utils import *
 from models.networks import PyramidTreeNet
 
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self):
@@ -422,39 +423,63 @@ class RunManager:
         if should_print:
             print(log_str)
 
-    def train_samplenet(self):
-        normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
-                                         std=[0.2473, 0.2434, 0.2610])
+    def train_samplenet(self, isCifar=True, dir='/data/volume1/cifar10'):
+        if isCifar:
+            normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+                                             std=[0.2473, 0.2434, 0.2610])
 
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ])
-        dir = '/data/volume1/cifar10'
-        # dir = 'C:\\Users\\zengcheng\\Desktop\\baseCode\\Proxyless-NAS\\dataset\\cifar10'
+            transform_train = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
 
-        trainset = torchvision.datasets.CIFAR10(root=dir, train=True,
-                                                download=True, transform=transform_train)
+            trainset = torchvision.datasets.CIFAR10(root=dir, train=True,
+                                                    download=True, transform=transform_train)
 
-        data_loader = torch.utils.data.DataLoader(
-            trainset,
-            batch_size=64, shuffle=True,
-            num_workers=8, pin_memory=True)
+            data_loader = torch.utils.data.DataLoader(
+                trainset,
+                batch_size=64, shuffle=True,
+                num_workers=8, pin_memory=True)
 
-        transform_val = transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])
+            transform_val = transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
 
-        valset = torchvision.datasets.CIFAR10(root=dir, train=False,
-                                              download=True, transform=transform_val)
-        val_loader = torch.utils.data.DataLoader(
-            valset,
-            batch_size=32, shuffle=False,
-            num_workers=8, pin_memory=True)
-        # self.net = torch.nn.parallel.DistributedDataParallel(self.net)
+            valset = torchvision.datasets.CIFAR10(root=dir, train=False,
+                                                  download=True, transform=transform_val)
+            val_loader = torch.utils.data.DataLoader(
+                valset,
+                batch_size=32, shuffle=False,
+                num_workers=8, pin_memory=True)
+        else:
+            normalize = NormalizeForSinglePicture()
+            transform_train = transforms.Compose([
+                transforms.Resize((48,48)),
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            trainset = torchvision.datasets.ImageFolder(root=dir, transform=transform_train)
+            data_loader = torch.utils.data.DataLoader(
+                trainset,
+                batch_size=1, shuffle=True,
+                num_workers=0, pin_memory=True)
+            transform_val = transforms.Compose([
+                transforms.Resize((48, 48)),
+                transforms.CenterCrop(32),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            valset = torchvision.datasets.ImageFolder(root=dir, transform=transform_val)
+            val_loader = torch.utils.data.DataLoader(
+                valset,
+                batch_size=1, shuffle=False,
+                num_workers=0, pin_memory=True)
+
         best_acc = 0
         for epoch in range(self.start_epoch, self.run_config.n_epochs):
             print('\n', '-' * 30, 'Train epoch: %d' % (epoch + 1), '-' * 30, '\n')
@@ -514,38 +539,63 @@ class RunManager:
                 torch.save(self.net.state_dict(), PATH)
             print('best top 1-acc:{acc:.3f}'.format(acc=best_acc))
 
-    def train_supernet(self):
-        # data_loader = self.run_config.train_loader
-        normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
-                                         std=[0.2473, 0.2434, 0.2610])
-
-        transform_train = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ])
-        dir = '/data/volume1/cifar10'
-
-        trainset = torchvision.datasets.CIFAR10(root=dir, train=True,
-                                                download=True, transform=transform_train)
-
-        data_loader = torch.utils.data.DataLoader(
-            trainset,
-            batch_size=32, shuffle=True,
-            num_workers=8, pin_memory=True)
-
-        transform_val = transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])
-
-        valset = torchvision.datasets.CIFAR10(root=dir, train=False,
-                                              download=True, transform=transform_val)
-        val_loader = torch.utils.data.DataLoader(
-            valset,
-            batch_size=32, shuffle=True,
-            num_workers=8, pin_memory=True)
+    def train_supernet(self, isCifar=True, dir='/data/volume1/cifar10'):
+        if isCifar:
+            normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+                                             std=[0.2473, 0.2434, 0.2610])
+            transform_train = transforms.Compose([
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            dir = '/data/volume1/cifar10'
+    
+            trainset = torchvision.datasets.CIFAR10(root=dir, train=True,
+                                                    download=True, transform=transform_train)
+    
+            data_loader = torch.utils.data.DataLoader(
+                trainset,
+                batch_size=32, shuffle=True,
+                num_workers=8, pin_memory=True)
+    
+            transform_val = transforms.Compose([
+                transforms.ToTensor(),
+                normalize,
+            ])
+    
+            valset = torchvision.datasets.CIFAR10(root=dir, train=False,
+                                                  download=True, transform=transform_val)
+            val_loader = torch.utils.data.DataLoader(
+                valset,
+                batch_size=32, shuffle=True,
+                num_workers=8, pin_memory=True)
+        else:
+            normalize = NormalizeForSinglePicture()
+            transform_train = transforms.Compose([
+                transforms.Resize((48, 48)),
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            trainset = torchvision.datasets.ImageFolder(root=dir, transform=transform_train)
+            data_loader = torch.utils.data.DataLoader(
+                trainset,
+                batch_size=32, shuffle=True,
+                num_workers=8, pin_memory=True)
+            transform_val = transforms.Compose([
+                transforms.Resize((48, 48)),
+                transforms.CenterCrop(32),
+                transforms.ToTensor(),
+                normalize,
+            ])
+            valset = torchvision.datasets.ImageFolder(root=dir, transform=transform_val)
+            val_loader = torch.utils.data.DataLoader(
+                valset,
+                batch_size=32, shuffle=False,
+                num_workers=8, pin_memory=True)
+            
 
         architecture_parameters = generate_init_architecture_parameters()
         for epoch in range(self.start_epoch, self.run_config.n_epochs):
